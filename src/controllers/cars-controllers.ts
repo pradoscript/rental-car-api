@@ -5,6 +5,12 @@ import { z } from 'zod'
 
 
 class CarController {
+
+    idSchema = z
+        .string()
+        .transform((value) => Number(value))
+        .refine((value) => !isNaN(value), { message: 'ID must be a number' })
+
     async index(request: Request, response: Response, next: NextFunction) {
         try {
             const { model } = request.query
@@ -20,11 +26,11 @@ class CarController {
     async create(request: Request, response: Response, next: NextFunction) {
         try {
             const bodySchema = z.object({
-                model: z.string(),
-                brand: z.string(),
+                model: z.string().min(2),
+                brand: z.string().min(2),
                 year: z.number(),
-                daily_price: z.number(),
-                insurance: z.number(),
+                daily_price: z.number().positive(),
+                insurance: z.number().positive(),
             })
             const { model, brand, year, daily_price, insurance } = bodySchema.parse(request.body)
             await knexInstance<CarTypes>("cars").insert({ model, brand, year, daily_price, insurance })
@@ -36,11 +42,7 @@ class CarController {
 
     async update(request: Request, response: Response, next: NextFunction) {
         try {
-            const id = z
-                .string()
-                .transform((value) => Number(value))
-                .refine((value) => !isNaN(value), { message: 'ID must be a number' })
-                .parse(request.params.id)
+            const id = this.idSchema.parse(request.params.id)
 
             const bodySchema = z.object({
                 daily_price: z.number(),
@@ -52,6 +54,7 @@ class CarController {
             const car = await knexInstance<CarTypes>("cars")
                 .select()
                 .where({ id })
+                .first()
 
             if (!car) {
                 throw new AppError('Car not found')
@@ -68,15 +71,12 @@ class CarController {
 
     async remove(request: Request, response: Response, next: NextFunction) {
         try {
-            const id = z
-                .string()
-                .transform((value) => Number(value))
-                .refine(value => !isNaN(value), { message: "The ID must be a number" })
-                .parse(request.params.id)
+            const id = this.idSchema.parse(request.params.id)
 
             const car = await knexInstance<CarTypes>("cars")
                 .select()
                 .where({ id })
+                .first()
 
             if (!car) {
                 throw new AppError('Car not found')
