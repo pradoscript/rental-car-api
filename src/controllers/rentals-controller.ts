@@ -1,4 +1,5 @@
 import { knexInstance } from "@/database/knex";
+import { AppError } from "@/utils/AppError";
 import dayjs from "dayjs";
 import { Request, Response, NextFunction } from "express";
 import { z } from 'zod'
@@ -6,26 +7,44 @@ import { z } from 'zod'
 class RentalsController {
 
     async index(request: Request, response: Response, next: NextFunction) {
-        const rentals = await knexInstance<RentalTypes>("rentals")
-            .select("rentals.id", "costumers.name", "cars.model", "rentals.start_date", "rentals.end_date", "total_price AS price")
-            .join("costumers", "costumers.id", "rentals.client_id")
-            .join("cars", "cars.id", "rentals.car_id")
-        return response.status(200).json(rentals)
+        try {
+            const rentals = await knexInstance<RentalTypes>("rentals")
+                .select("rentals.id", "costumers.name", "cars.model", "rentals.start_date", "rentals.end_date", "total_price AS price")
+                .join("costumers", "costumers.id", "rentals.client_id")
+                .join("cars", "cars.id", "rentals.car_id")
+            return response.status(200).json(rentals)
+        } catch (error) {
+            next(error)
+        }
     }
 
     async show(request: Request, response: Response, next: NextFunction) {
-        const id = z
-            .string()
-            .transform(string => Number(string))
-            .refine(value => !isNaN(value), { message: 'The ID must be a number' })
-            .parse(request.params.id)
-        const rental = await knexInstance<RentalTypes>("rentals")
-            .select("rentals.id", "costumers.name", "cars.model", "rentals.start_date", "rentals.end_date", "total_price AS price")
-            .where("rentals.id", id)
-            .join("costumers", "costumers.id", "rentals.client_id")
-            .join("cars", "cars.id", "rentals.car_id")
-            .first()
-        return response.status(200).json(rental)
+        try {
+            const id = z
+                .string()
+                .transform(string => Number(string))
+                .refine(value => !isNaN(value), { message: 'The ID must be a number' })
+                .parse(request.params.id)
+
+            const rentalFlag = await knexInstance<RentalTypes>("rentals")
+                .select()
+                .where({ id })
+                .first()
+
+            if (!rentalFlag) {
+                throw new AppError('Rental not found')
+            }
+
+            const rental = await knexInstance<RentalTypes>("rentals")
+                .select("rentals.id", "costumers.name", "cars.model", "rentals.start_date", "rentals.end_date", "total_price AS price")
+                .where("rentals.id", id)
+                .join("costumers", "costumers.id", "rentals.client_id")
+                .join("cars", "cars.id", "rentals.car_id")
+                .first()
+            return response.status(200).json(rental)
+        } catch (error) {
+            next(error)
+        }
     }
 
     async create(request: Request, response: Response, next: NextFunction) {
@@ -46,7 +65,7 @@ class RentalsController {
             const car = await knexInstance<CarTypes>("cars").select().where({ id: car_id }).first()
 
             if (!car) {
-                return response.status(404).json({ message: "Car not found" });
+                throw new AppError('Car not found')
             }
 
             await knexInstance<CarTypes>("cars").update({ available: false }).where({ id: car_id })
@@ -56,7 +75,7 @@ class RentalsController {
             const diffInDays = endDate.diff(startDate, "day")
 
             if (diffInDays <= 0) {
-                return response.status(400).json({ message: "End date must be in the future" });
+                throw new AppError('The difference between the dates is negative')
             }
 
             const total_price = ((diffInDays * Number(car?.daily_price)) + Number(car?.insurance))
@@ -83,6 +102,14 @@ class RentalsController {
                 .transform(string => Number(string))
                 .refine(value => !isNaN(value), { message: 'The ID must be a number' })
                 .parse(request.params.id)
+
+            const rentalFlag = await knexInstance<RentalTypes>("rentals")
+                .select()
+                .where({ id })
+
+            if (!rentalFlag) {
+                throw new AppError('Rental not found')
+            }
 
             const carId = await knexInstance<RentalTypes>("rentals")
                 .select("car_id")

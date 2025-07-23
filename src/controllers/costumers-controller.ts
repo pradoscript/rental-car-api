@@ -1,4 +1,5 @@
 import { knexInstance } from '@/database/knex'
+import { AppError } from '@/utils/AppError'
 import { Request, Response, NextFunction } from 'express'
 import { z } from 'zod'
 
@@ -42,6 +43,15 @@ class CostumersController {
             })
 
             const { email } = bodySchema.parse(request.body)
+
+            const costumer = await knexInstance<CostumerTypes>("costumers")
+                .select()
+                .where({ id })
+
+            if (!costumer) {
+                throw new AppError('Costumer not found')
+            }
+
             await knexInstance<CostumerTypes>("costumers")
                 .update({ email })
                 .where({ id })

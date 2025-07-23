@@ -1,4 +1,5 @@
 import { knexInstance } from "@/database/knex";
+import { AppError } from "@/utils/AppError";
 import { Request, Response, NextFunction } from "express";
 import { z } from 'zod'
 
@@ -47,6 +48,15 @@ class CarController {
             })
 
             const { daily_price, insurance } = bodySchema.parse(request.body)
+
+            const car = await knexInstance<CarTypes>("cars")
+                .select()
+                .where({ id })
+
+            if (!car) {
+                throw new AppError('Car not found')
+            }
+
             await knexInstance<CarTypes>("cars")
                 .update({ daily_price, insurance })
                 .where({ id })
@@ -57,14 +67,26 @@ class CarController {
     }
 
     async remove(request: Request, response: Response, next: NextFunction) {
-        const id = z
-            .string()
-            .transform((value) => Number(value))
-            .refine(value => !isNaN(value), { message: "The ID must be a number" })
-            .parse(request.params.id)
+        try {
+            const id = z
+                .string()
+                .transform((value) => Number(value))
+                .refine(value => !isNaN(value), { message: "The ID must be a number" })
+                .parse(request.params.id)
 
-        await knexInstance<CarTypes>("cars").delete().where({ id })
-        return response.json({ message: `The car has been deleted` })
+            const car = await knexInstance<CarTypes>("cars")
+                .select()
+                .where({ id })
+
+            if (!car) {
+                throw new AppError('Car not found')
+            }
+
+            await knexInstance<CarTypes>("cars").delete().where({ id })
+            return response.json({ message: `The car has been deleted` })
+        } catch (error) {
+            next(error)
+        }
     }
 }
 
