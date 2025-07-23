@@ -9,8 +9,8 @@ class RentalsController {
     async index(request: Request, response: Response, next: NextFunction) {
         try {
             const rentals = await knexInstance<RentalTypes>("rentals")
-                .select("rentals.id", "costumers.name", "cars.model", "rentals.start_date", "rentals.end_date", "total_price AS price")
-                .join("costumers", "costumers.id", "rentals.client_id")
+                .select("rentals.id", "clients.name", "cars.model", "rentals.start_date", "rentals.end_date", "total_price AS price")
+                .join("clients", "clients.id", "rentals.client_id")
                 .join("cars", "cars.id", "rentals.car_id")
             return response.status(200).json(rentals)
         } catch (error) {
@@ -36,9 +36,9 @@ class RentalsController {
             }
 
             const rental = await knexInstance<RentalTypes>("rentals")
-                .select("rentals.id", "costumers.name", "cars.model", "rentals.start_date", "rentals.end_date", "total_price AS price")
+                .select("rentals.id", "clients.name", "cars.model", "rentals.start_date", "rentals.end_date", "total_price AS price")
                 .where("rentals.id", id)
-                .join("costumers", "costumers.id", "rentals.client_id")
+                .join("clients", "clients.id", "rentals.client_id")
                 .join("cars", "cars.id", "rentals.car_id")
                 .first()
             return response.status(200).json(rental)
@@ -68,6 +68,10 @@ class RentalsController {
                 throw new AppError('Car not found')
             }
 
+            if (!car.available) {
+                throw new AppError('Car already taken')
+            }
+
             await knexInstance<CarTypes>("cars").update({ available: false }).where({ id: car_id })
 
             const startDate = dayjs(start_date).startOf('day')
@@ -91,6 +95,7 @@ class RentalsController {
             return response.status(201).json({ message: "Rental created successfully" });
 
         } catch (error) {
+            console.log(error)
             next(error)
         }
     }
@@ -122,7 +127,7 @@ class RentalsController {
 
             await knexInstance<CarTypes>("cars")
                 .update({ available: true })
-                .where({ id: Number(carId) })
+                .where({ id: carId?.car_id })
 
             return response.json({ message: 'The car has been returned' })
 

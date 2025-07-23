@@ -1,11 +1,11 @@
 import { Router } from 'express'
-import { costumersRoutes } from './costumers-routes'
+import { clientsRoutes } from './clients-routes'
 import { carRoutes } from './cars-routes'
 import { rentalRoutes } from './rentals-routes'
 
 const routes = Router()
 
-routes.use("/costumers", costumersRoutes)
+routes.use("/clients", clientsRoutes)
 routes.use("/cars", carRoutes)
 routes.use("/rentals", rentalRoutes)
 

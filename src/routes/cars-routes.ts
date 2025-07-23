@@ -1,13 +1,13 @@
-import { CarController } from '@/controllers/cars-controllers'
+import { CarsController } from '@/controllers/cars-controllers'
 import { Router } from 'express'
 
 const carRoutes = Router()
-const carController = new CarController()
+const carController = new CarsController()
 
 carRoutes.get("/", carController.index)
 carRoutes.post("/", carController.create)
-carRoutes.patch("/:id", carController.update)
-carRoutes.delete("/:id", carController.remove)
+carRoutes.patch("/:id", carController.update.bind(carController))
+carRoutes.delete("/:id", carController.remove.bind(carController))
 
 
-export { carRoutes }
+export { carRoutes }    

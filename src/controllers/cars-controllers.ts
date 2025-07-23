@@ -4,9 +4,9 @@ import { Request, Response, NextFunction } from "express";
 import { z } from 'zod'
 
 
-class CarController {
+class CarsController {
 
-    idSchema = z
+    private idSchema = z
         .string()
         .transform((value) => Number(value))
         .refine((value) => !isNaN(value), { message: 'ID must be a number' })
@@ -90,4 +90,4 @@ class CarController {
     }
 }
 
-export { CarController }
+export { CarsController }
